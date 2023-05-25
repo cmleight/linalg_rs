@@ -53,8 +53,8 @@ pub trait IntFloat:
     + Sync
 {
 }
-///    + ScalarOperand
-#[derive(Debug)]
+
+#[derive(Debug, PartialEq, Eq)]
 struct Matrix<T: IntFloat> {
     rows: usize,
     cols: usize,
@@ -72,7 +72,7 @@ impl<T: IntFloat> fmt::Display for Matrix<T> {
             display_vec.push('[');
             (0..self.rows)
                 .for_each(|i| {
-                    display_vec.push_str(&self.data[j + i * self.rows].to_string());
+                    display_vec.push_str(&self[&j][i].to_string());
                     display_vec.push(',');
                 });
             display_vec.pop();
@@ -106,6 +106,12 @@ impl<T:IntFloat> IndexMut<&'_ usize> for Matrix<T> {
 }
 
 impl<T: IntFloat> Matrix<T> {
+    fn swap_rows(&mut self, i: usize, j: usize) {
+        for k in 0..self.cols {
+            self.data.swap(i * self.rows + k, j * self.rows + k)
+        }
+    }
+
     fn deep_copy(&self) -> Matrix<T> {
         return Matrix{
             rows: self.rows,
@@ -115,20 +121,15 @@ impl<T: IntFloat> Matrix<T> {
         }
     }
 
+    /// Below works for matricies <= rank 3
+    /// use gaussian_elimination for rank >3
     pub fn laplace_determinant(&self) -> T {
         return (0..self.rows)
             .map(|i| {
-                    (0..self.cols).map(|j| {
-                        let a = (
+                    (0..self.cols).map(|j| (
                             self[&j][(j + i) % self.cols],
                             self[&j][(self.cols + i - j) % self.cols]
-                        );
-                        println!("i: {:?}, j: {:?}", i, j);
-                        println!("first: {:?}, second: {:?}", (j + i) % self.cols, (self.cols + i - j) % self.cols);
-                        println!("raw_terms: {:?}", a);
-                        a
-                    }).reduce(|(a1, a2), (b1, b2)| {
-                        println!("mult: ({:?}, {:?})", a1 * b1, a2 * b2);
+                        )).reduce(|(a1, a2), (b1, b2)| {
                         (a1 * b1, a2 * b2)
                     }).unwrap()
             })
@@ -138,7 +139,7 @@ impl<T: IntFloat> Matrix<T> {
     }
 
     pub fn eigenvectors(&self) -> Option<Matrix<T>> {
-        let mut a = self.deep_copy();
+        let a = self.deep_copy();
         if self.rows != self.cols { return None; }
         (0..self.rows);
         return Some(a);
@@ -151,24 +152,56 @@ impl<T: IntFloat> Matrix<T> {
 
     /// Calculates the upper and lower triangular matricies from the source
     /// return the upper then lower matrix
-    pub fn gaussian_elimination(&self) -> Matrix<T> {
-        todo!()
-    /*
+    pub fn gaussian_elimination(&self) -> (bool, Matrix<T>) {
         let rows = self.rows;
         let cols = self.cols;
         let mut a = self.deep_copy();
+        let mut det_sign_pos = true;
+        let mut norm_col = 0;
+        let mut norm_row = 0;
 
-        (0..rows).for_each(|j|{
-            // pivot is not zero
-            if a[&j][j] != T::zero() {
-                (j..cols).for_each(|i|{
+        while norm_col < cols && norm_row < rows {
+            if a[&norm_col][norm_row].is_zero() {
+                let i_max = (norm_col..rows)
+                    .map(|i| (i, a[&i][norm_row]))
+                    .reduce(|(x, a), (y, b)| if a.abs() >= b.abs() {(x, a)} else {(y, b)})
+                    .map(|(x, _)| x)
+                    .unwrap_or(norm_row);
+                if a[&norm_col][i_max].is_zero() {
+                    norm_col += 1;
+                    continue;
+                }
+                if i_max != norm_row {
+                    a.swap_rows(i_max, norm_row);
+                    det_sign_pos = !det_sign_pos;
+                }
 
-                })
             }
-        });
+            ((norm_row + 1)..rows).for_each(|i| {
+                let factor = a[&i][norm_col] / a[&norm_row][norm_col];
+                a[&i][norm_col] = T::zero();
+                ((norm_col + 1)..cols).for_each(|j| {
+                    a[&i][j] = a[&i][j] - a[&norm_row][j] * factor;
+                });
+            });
+            norm_col += 1;
+            norm_row += 1;
+        };
 
-        return a
-        */
+        return (det_sign_pos, a);
+    }
+
+    pub fn gaussian_determinant(&self) -> (Matrix<T>, T) {
+        let (det_sign_pos, a) = self.gaussian_elimination();
+        let base_det = (0..self.cols)
+            .map(|i| a[&i][i])
+            .reduce(|x, y| x * y)
+            .unwrap();
+        if !det_sign_pos {
+            return (a, -base_det);
+        } else {
+            return (a, base_det);
+        }
     }
 }
 
@@ -181,15 +214,10 @@ mod tests {
     #[test]
     fn test_nonzero_laplace_determinant() {
         assert_eq!(Matrix {
-            /*
             rows: 3,
             cols: 3,
             data: vec![1., 2., 2., 2., 0., -1., -2., 1., 3.],
-            */
-            rows: 4,
-            cols: 4,
-            data: vec![1.,3.,5.,9.,1.,3.,1.,7.,4.,3.,9.,7.,5.,2.,0.,9.],
-        }.laplace_determinant(), -376.)
+        }.laplace_determinant(), -3.)
     }
 
     #[test]
@@ -199,5 +227,20 @@ mod tests {
             cols: 3,
             data: vec![1., 2., 3., 4., 5., 6., 7., 8., 9.],
         }.laplace_determinant(), 0.)
+    }
+
+    #[test]
+    fn test_nonzero_gausian_elimination_determinant() {
+        let res = Matrix {
+            rows: 4,
+            cols: 4,
+            data: vec![1.,3.,5.,9.,1.,3.,1.,7.,4.,3.,9.,7.,5.,2.,0.,9.],
+        }.gaussian_determinant();
+        assert_eq!(res.1, -376.);
+        assert_eq!(res.0, Matrix{
+            rows: 4,
+            cols: 4,
+            data: vec![1.,3.,5.,9.,0.,-13.,-25.,-36.,0.,0.,6.307692307692307,-4.076923076923077,0.,0.,0.,-4.585365853658537],
+        });
     }
 }
