@@ -118,10 +118,19 @@ impl<T: IntFloat> Matrix<T> {
     pub fn laplace_determinant(&self) -> T {
         return (0..self.rows)
             .map(|i| {
-                    (0..self.cols).map(|j| (
-                        self[&j][(j + i) % self.cols],
-                        self[&j][(self.cols + i - j) % self.cols]
-                    )).reduce(|(a1, a2), (b1, b2)| (a1 * a2, b1 * b2)).unwrap()
+                    (0..self.cols).map(|j| {
+                        let a = (
+                            self[&j][(j + i) % self.cols],
+                            self[&j][(self.cols + i - j) % self.cols]
+                        );
+                        println!("i: {:?}, j: {:?}", i, j);
+                        println!("first: {:?}, second: {:?}", (j + i) % self.cols, (self.cols + i - j) % self.cols);
+                        println!("raw_terms: {:?}", a);
+                        a
+                    }).reduce(|(a1, a2), (b1, b2)| {
+                        println!("mult: ({:?}, {:?})", a1 * b1, a2 * b2);
+                        (a1 * b1, a2 * b2)
+                    }).unwrap()
             })
             .map(|(a, b)| a - b)
             .reduce(|a, b| a + b)
@@ -131,7 +140,7 @@ impl<T: IntFloat> Matrix<T> {
     pub fn eigenvectors(&self) -> Option<Matrix<T>> {
         let mut a = self.deep_copy();
         if self.rows != self.cols { return None; }
-        // (0..self.rows)
+        (0..self.rows);
         return Some(a);
     }
 
@@ -170,14 +179,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_laplace_determinant() {
-    let a = Matrix {
-        rows: 3,
-        cols: 3,
-        data: vec![1., 2., 2., 2., 0., -1., -2., 1., 3.],
-    };
+    fn test_nonzero_laplace_determinant() {
+        assert_eq!(Matrix {
+            /*
+            rows: 3,
+            cols: 3,
+            data: vec![1., 2., 2., 2., 0., -1., -2., 1., 3.],
+            */
+            rows: 4,
+            cols: 4,
+            data: vec![1.,3.,5.,9.,1.,3.,1.,7.,4.,3.,9.,7.,5.,2.,0.,9.],
+        }.laplace_determinant(), -376.)
+    }
 
-        assert_eq!(a.laplace_determinant(), -3.)
+    #[test]
+    fn test_zero_laplace_determinant() {
+        assert_eq!(Matrix {
+            rows: 3,
+            cols: 3,
+            data: vec![1., 2., 3., 4., 5., 6., 7., 8., 9.],
+        }.laplace_determinant(), 0.)
     }
 }
-
