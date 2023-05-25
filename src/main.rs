@@ -61,20 +61,6 @@ struct Matrix<T: IntFloat> {
     data: Vec<T>,
 }
 
-fn modulo_euclidean(a: i64, b: i64) -> usize {
-    let m = a % b;
-    let res = if m < 0 {
-        if b < 0 {
-            m - b
-        } else {
-            m + b
-        }
-    } else {
-        m
-    };
-    return res as usize;
-}
-
 impl<T: IntFloat> fmt::Display for Matrix<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut display_vec = String::with_capacity(self.rows * self.cols * 3);
@@ -142,16 +128,29 @@ impl<T: IntFloat> Matrix<T> {
             .unwrap();
     }
 
+    pub fn eigenvectors(&self) -> Option<Matrix<T>> {
+        let mut a = self.deep_copy();
+        if self.rows != self.cols { return None; }
+        // (0..self.rows)
+        return Some(a);
+    }
+
+    pub fn eigenvalues(&self) -> Vec<T> {
+        todo!()
+    }
+
+
     /// Calculates the upper and lower triangular matricies from the source
     /// return the upper then lower matrix
     pub fn gaussian_elimination(&self) -> Matrix<T> {
+        todo!()
+    /*
         let rows = self.rows;
         let cols = self.cols;
         let mut a = self.deep_copy();
 
         (0..rows).for_each(|j|{
             // pivot is not zero
-            // TODO: swap rows when zero
             if a[&j][j] != T::zero() {
                 (j..cols).for_each(|i|{
 
@@ -160,18 +159,25 @@ impl<T: IntFloat> Matrix<T> {
         });
 
         return a
+        */
     }
-
-    //    pub fn lu_determinants(&self) -> T {
-    //    }
 }
 
-fn main() {
+fn main() { }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_laplace_determinant() {
     let a = Matrix {
         rows: 3,
         cols: 3,
         data: vec![1., 2., 2., 2., 0., -1., -2., 1., 3.],
     };
-    println!("base_matrix: {}", a);
-    println!("determinant: {}", a.laplace_determinant());
+
+        assert_eq!(a.laplace_determinant(), -3.)
+    }
 }
+
