@@ -203,6 +203,14 @@ impl<T: IntFloat> Matrix<T> {
             return (a, base_det);
         }
     }
+
+    pub fn determinant(&self) -> T {
+        if self.rows <= 3 {
+            return self.laplace_determinant();
+        } else {
+            return self.gaussian_determinant().1;
+        }
+    }
 }
 
 fn main() { }
