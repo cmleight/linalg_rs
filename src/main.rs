@@ -138,18 +138,6 @@ impl<T: IntFloat> Matrix<T> {
             .unwrap();
     }
 
-    pub fn eigenvectors(&self) -> Option<Matrix<T>> {
-        let a = self.deep_copy();
-        if self.rows != self.cols { return None; }
-        (0..self.rows);
-        return Some(a);
-    }
-
-    pub fn eigenvalues(&self) -> Vec<T> {
-        todo!()
-    }
-
-
     /// Calculates the upper and lower triangular matricies from the source
     /// return the upper then lower matrix
     pub fn gaussian_elimination(&self) -> (bool, Matrix<T>) {
